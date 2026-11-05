@@ -164,10 +164,8 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
           <div><label for="tPrice" id="tPriceL">Arbeitspreis (€ je kWh)</label><input id="tPrice" type="number" step="any" inputmode="decimal" required></div>
           <div><label for="tBase">Grundgebühr (€ / Monat)</label><input id="tBase" type="number" step="any" inputmode="decimal" value="0"></div>
         </div>
-        <div class="row">
-          <div><label for="tAdv">Schon zurückgelegt (€ / Monat, optional)</label><input id="tAdv" type="number" step="any" inputmode="decimal" value="0"></div>
-          <div><label for="tFrom">Gültig ab</label><input id="tFrom" type="date" required></div>
-        </div>
+        <label for="tFrom">Gültig ab</label>
+        <input id="tFrom" type="date" required>
         <div id="tFactorWrap" class="hidden">
           <label for="tFactor">Gas: kWh je m³ (Brennwert × Zustandszahl, steht auf der Rechnung, ca. 10)</label>
           <input id="tFactor" type="number" step="any" inputmode="decimal" value="10">
@@ -372,9 +370,9 @@ function analyze(media){
     if (rateAll>0 && li.days>=2 && li.perDay>1.4*rateAll) res.alert = Math.round((li.perDay/rateAll-1)*100);
   }
   const endT=Math.max(tn,last);
-  const months={};
+  const months={}; const monthsAll={};
   if (tariff){
-    const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month), set=Number(tariff.advance_month);
+    const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month);
     res.price=price; res.base=base;
     const tl=state.tariffs.filter(t=>t.media_type===media);
     const at=d=>{ const ds=dayStr(d); let t=tl[0]; tl.forEach(x=>{ if(x.valid_from<=ds) t=x; }); return t; };
@@ -383,23 +381,21 @@ function analyze(media){
       const lo=Math.max(first,d), hi=Math.min(endT,d+1), len=hi-lo; if(len<=0) continue;
       const t=at(d), p=Number(t.price_per_unit), b=Number(t.base_fee_month)/MONTH;
       const inData=Math.max(0,Math.min(hi,last)-lo), extra=Math.max(0,hi-Math.max(lo,last));
-      cost += ((dayQty[d]||0)+rate*extra)*p + b*len;
+      const c=((dayQty[d]||0)+rate*extra)*p + b*len; cost+=c;
+      const mk0=dayStr(d).slice(0,7); (monthsAll[mk0]||(monthsAll[mk0]={cost:0})).cost+=c;
       if (inData>0){ const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0,cost:0}); o.qty+=dayQty[d]||0; o.days+=inData; o.cost+=(dayQty[d]||0)*p+b*inData; }
     }
     res.costToday = cost;
-    res.setAside = set*res.spanToday/MONTH;
-    res.gap = res.costToday - res.setAside;
     res.yearCost = res.yearQty*price + base*12;
     res.monthCost = res.yearCost/12;
     res.dayCost = rate*price + base/MONTH;
-    res.setMonth = set;
   } else {
     for (let d=Math.floor(first); d<=Math.floor(last); d++){
       const inData=Math.min(last,d+1)-Math.max(first,d); if(inData<=0) continue;
       const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0}); o.qty+=dayQty[d]||0; o.days+=inData;
     }
   }
-  res.months=months;
+  res.months=months; res.monthsAll=monthsAll;
   return res;
 }
 
@@ -425,23 +421,32 @@ function renderHome(){
   if (!state.meters.length){ body.innerHTML=h+'<div class="card empty">Lege zuerst unter „Zähler" deine Zähler an.</div>'; return; }
   body.innerHTML = h + (state.view==='gesamt' ? viewTotal() : viewMedia(state.view));
   drawCharts();
+  const sr=$('saveRange');
+  if (sr){
+    const upd=()=>{ const p=+sr.value, v=+sr.dataset.var; $('saveVal').textContent=p; $('saveOut').textContent=`${p} % weniger Verbrauch sparen ca. ${eur0(v*p/100)} pro Jahr (nur Verbrauchskosten, die Grundgebühren bleiben).`; };
+    sr.oninput=upd; upd();
+  }
 }
 
 function kpi(v,l,cls=''){ return `<div class="kpi ${cls}"><b>${v}</b><span>${l}</span></div>`; }
 
 let chartJobs=[];
+function monthKey(off){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+off); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+const pct = (x,y) => y>0 ? (x>=y?'+':'')+num((x/y-1)*100,0)+' %' : '';
+
 function viewTotal(){
   chartJobs=[];
   const all=Object.keys(MEDIA).map(analyze).filter(a=>a.hasData && a.tariff);
   if (!all.length) return '<div class="card empty">Für die Gesamtansicht brauche ich pro Energieart mindestens zwei Ablesungen und einen Tarif.</div>';
   const sum=f=>all.reduce((s,a)=>s+f(a),0);
-  const month=sum(a=>a.monthCost), year=sum(a=>a.yearCost), costNow=sum(a=>a.costToday), set=sum(a=>a.setAside), day=sum(a=>a.dayCost), co2=sum(a=>a.co2Year);
-  const gap=costNow-set;
-  let h=`<div class="hero"><small>Jetzt zurücklegen pro Monat</small><b>${eur0(month)}</b><div class="meta">Hochrechnung Jahr ${eur0(year)} · ca. ${eur(day)} pro Tag</div></div>`;
+  const mc=k=>sum(a=>(a.monthsAll[k]||{cost:0}).cost);
+  const cm=mc(monthKey(0)), pm=mc(monthKey(-1)), p2=mc(monthKey(-2));
+  const year=sum(a=>a.yearCost), day=sum(a=>a.dayCost), costNow=sum(a=>a.costToday), co2=sum(a=>a.co2Year), varCost=sum(a=>a.yearQty*a.price);
+  let h=`<div class="hero"><small>Kosten pro Monat (Ø)</small><b>${eur0(year/12)}</b><div class="meta">Hochrechnung Jahr ${eur0(year)} · ca. ${eur(day)} pro Tag</div></div>`;
   h+=`<div class="card"><div class="kpis">
-    ${kpi(eur0(costNow),'Kosten bis heute (hochgerechnet)')}
-    ${kpi(eur0(set),'schon zurückgelegt')}
-    ${kpi(eur0(Math.abs(gap)), gap>0?'noch zurückzulegen':'Überschuss', gap>0?'warn':'good')}
+    ${kpi(eur0(cm),'Dieser Monat (bis heute geschätzt)')}
+    ${kpi(eur0(pm),'Vormonat'+(p2>0?' ('+pct(pm,p2)+')':''), p2>0 && pm>p2 ? 'warn' : (p2>0?'good':''))}
+    ${kpi(eur0(costNow),'Kosten seit Start')}
     ${kpi(co2? num(co2,0)+' kg':'–','CO₂ pro Jahr (Richtwert)')}
   </div>`;
   const alerts=all.filter(a=>a.alert).map(a=>`${MEDIA[a.media].label}: letzter Zeitraum ${a.alert} % über dem Schnitt`);
@@ -449,7 +454,12 @@ function viewTotal(){
   h+=`</div>`;
   h+=`<div class="card"><h2>Kostenanteile (Jahr)</h2><div class="chartbox"><canvas id="cDonut"></canvas></div></div>`;
   h+=`<div class="card"><h2>Kosten pro Monat</h2><div class="chartbox tall"><canvas id="cStack"></canvas></div></div>`;
-  chartJobs.push({type:'donut',all},{type:'stack',all});
+  h+=`<div class="card"><h2>Kosten aufsummiert</h2><div class="chartbox tall"><canvas id="cCumT"></canvas></div></div>`;
+  h+=`<div class="card"><h2>Was wäre, wenn?</h2>
+    <label for="saveRange" style="margin-top:0">Verbrauch senken um <b id="saveVal">10</b> %</label>
+    <input id="saveRange" type="range" min="0" max="40" value="10" data-var="${varCost}" style="padding:0;min-height:34px">
+    <div class="note" id="saveOut"></div></div>`;
+  chartJobs.push({type:'donut',all},{type:'stack',all},{type:'cumtotal',all});
   return h;
 }
 
@@ -460,7 +470,7 @@ function viewMedia(media){
   if (!a.hasData) return '<div class="card empty">Für einen Verbrauch brauche ich mindestens zwei Ablesungen. Trage unter „Ablesen" deinen Startwert ein, oder gleich die Monatsendstände im Rückblick.</div>';
   const u=a.unit; let h='';
   if (a.tariff){
-    h+=`<div class="hero"><small>${esc(M.label)}: jetzt zurücklegen pro Monat</small><b>${eur0(a.monthCost)}</b><div class="meta">Hochrechnung Jahr ${eur0(a.yearCost)} · ca. ${eur(a.dayCost)} pro Tag</div></div>`;
+    h+=`<div class="hero"><small>${esc(M.label)}: Kosten pro Monat (Ø)</small><b>${eur0(a.yearCost/12)}</b><div class="meta">Hochrechnung Jahr ${eur0(a.yearCost)} · ca. ${eur(a.dayCost)} pro Tag</div></div>`;
   } else {
     h+=`<div class="hero"><small>${esc(M.label)}: Ø Verbrauch pro Tag</small><b>${num(a.rate,2)} ${u}</b><div class="meta">Hochrechnung Jahr ${num(a.yearQty,0)} ${u}</div></div>`;
   }
@@ -474,23 +484,24 @@ function viewMedia(media){
   if (media==='gas' && a.spanDays<300) h+=`<div class="note">Gas schwankt stark mit der Jahreszeit. Die Hochrechnung wird nach etwa einem Jahr deutlich genauer. Bis dahin ist sie nur ein Anhaltspunkt.</div>`;
   h+=`</div>`;
   if (a.tariff){
-    h+=`<div class="card"><h2>Kosten & Rückstellung</h2><div class="kpis">
-      ${kpi(eur0(a.costToday),'Kosten bis heute')}
-      ${kpi(eur0(a.setAside),'schon zurückgelegt')}
-      ${kpi(eur0(Math.abs(a.gap)), a.gap>0?'noch zurückzulegen':'Überschuss', a.gap>0?'warn':'good')}
-      ${kpi(a.co2Year? num(a.co2Year,0)+' kg':'–','CO₂ pro Jahr (Richtwert)')}
+    const g=k=>(a.monthsAll[k]||{cost:0}).cost; const cm=g(monthKey(0)), pm=g(monthKey(-1)), p2=g(monthKey(-2));
+    h+=`<div class="card"><h2>Kosten</h2><div class="kpis">
+      ${kpi(eur0(cm),'Dieser Monat (bis heute geschätzt)')}
+      ${kpi(eur0(pm),'Vormonat'+(p2>0?' ('+pct(pm,p2)+')':''), p2>0 && pm>p2 ? 'warn' : (p2>0?'good':''))}
+      ${kpi(eur0(a.costToday),'seit Start bis heute')}
+      ${kpi(num(a.price,3)+' €','Preis je '+M.bill)}
     </div></div>`;
   } else {
-    h+=`<div class="card empty">Trage unter „Tarife" deinen ${esc(M.label)}-Tarif ein, dann rechne ich Kosten und Rückstellung aus.</div>`;
+    h+=`<div class="card empty">Trage unter „Tarife" deinen ${esc(M.label)}-Tarif ein, dann rechne ich die Kosten aus.</div>`;
   }
-  // geschätzte Zählerstände
   if (a.sinceLast>0.02){
     h+=`<div class="card"><h2>Geschätzter Zählerstand heute</h2><ul class="list">`+
       a.est.map(e=>`<li><div><b>${num(e.value,1)} ${e.m.unit==='m3'?'m³':'kWh'}</b><small>${esc(e.m.meter_number)}${e.m.description?' · '+esc(e.m.description):''} · seit ${agoText(a.sinceLast)} nicht abgelesen</small></div></li>`).join('')+`</ul></div>`;
   }
+  if (a.tariff) h+=`<div class="card"><h2>Kosten pro Monat</h2><div class="chartbox"><canvas id="cCost"></canvas></div></div>`;
   h+=`<div class="card"><h2>Verbrauch pro Monat</h2><div class="chartbox"><canvas id="cBars"></canvas></div></div>`;
   h+=`<div class="card"><h2>Tagesverbrauch je Ablesung</h2><div class="chartbox"><canvas id="cLine"></canvas></div></div>`;
-  if (a.tariff) h+=`<div class="card"><h2>Kosten aufsummiert${a.setMonth>0?' und zurückgelegt':''}</h2><div class="chartbox"><canvas id="cCum"></canvas></div></div>`;
+  if (a.tariff) h+=`<div class="card"><h2>Kosten aufsummiert</h2><div class="chartbox"><canvas id="cCum"></canvas></div></div>`;
   chartJobs.push({type:'media',a});
   return h;
 }
@@ -516,9 +527,19 @@ function drawCharts(){
       charts.push(new Chart(el,{type:'bar',data:{labels:keys.map(monLabel),datasets:j.all.map(a=>({label:MEDIA[a.media].label,data:keys.map(k=>a.months[k]?+a.months[k].cost.toFixed(2):0),backgroundColor:css(MEDIA[a.media].color),borderRadius:6,borderSkipped:false}))},
         options:{...base,plugins:{legend:{display:true,labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur(c.parsed.y)}`}}},scales:{x:{...scales.x,stacked:true},y:{...scales.y,stacked:true}}}}));
     }
+    if (j.type==='cumtotal'){
+      const el=$('cCumT'); if(!el) return;
+      const keys=[...new Set(j.all.flatMap(a=>Object.keys(a.months)))].sort();
+      charts.push(new Chart(el,{type:'line',data:{labels:keys.map(monLabel),datasets:j.all.map(a=>{ let c=0; const col=css(MEDIA[a.media].color);
+        return {label:MEDIA[a.media].label,data:keys.map(k=>{ c+=(a.months[k]?a.months[k].cost:0); return +c.toFixed(2); }),borderColor:col,backgroundColor:col+'66',fill:true,tension:.35,pointRadius:0,borderWidth:2}; })},
+        options:{...base,plugins:{legend:{display:true,labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur0(c.parsed.y)}`}}},scales:{x:{...scales.x},y:{...scales.y,stacked:true}}}}));
+    }
     if (j.type==='media'){
       const a=j.a, col=css(MEDIA[a.media].color);
       const keys=Object.keys(a.months).sort(); const u=a.unit;
+      const ecost=$('cCost');
+      if (ecost && a.tariff) charts.push(new Chart(ecost,{type:'bar',data:{labels:keys.map(monLabel),datasets:[{data:keys.map(k=>+a.months[k].cost.toFixed(2)),backgroundColor:col,borderRadius:8,borderSkipped:false}]},
+        options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${eur(c.parsed.y)}`}}}}}));
       const eb=$('cBars');
       if (eb) charts.push(new Chart(eb,{type:'bar',data:{labels:keys.map(monLabel),datasets:[{data:keys.map(k=>+a.months[k].qty.toFixed(1)),backgroundColor:col,borderRadius:8,borderSkipped:false}]},
         options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,1)} ${u}`}}}}}));
@@ -527,12 +548,11 @@ function drawCharts(){
         options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,2)} ${u} pro Tag`}}}}}));
       const ec=$('cCum');
       if (ec && a.tariff){
-        const lab=[],cost=[],set=[]; let cc=0, cs=0;
-        keys.forEach(k=>{ cc+=a.months[k].cost; cs+=a.setMonth*a.months[k].days/MONTH; lab.push(monLabel(k)); cost.push(+cc.toFixed(2)); set.push(+cs.toFixed(2)); });
-        lab.push('heute'); cost.push(+a.costToday.toFixed(2)); set.push(+a.setAside.toFixed(2));
+        const lab=[],cost=[]; let cc=0;
+        keys.forEach(k=>{ cc+=a.months[k].cost; lab.push(monLabel(k)); cost.push(+cc.toFixed(2)); });
+        lab.push('heute'); cost.push(+a.costToday.toFixed(2));
         const ds=[{label:'Kosten',data:cost,borderColor:col,backgroundColor:grad(col),fill:true,tension:.35,pointRadius:2,borderWidth:3}];
-        if (a.setMonth>0) ds.push({label:'zurückgelegt',data:set,borderColor:muted,borderDash:[6,5],tension:.35,pointRadius:0,borderWidth:2});
-        charts.push(new Chart(ec,{type:'line',data:{labels:lab,datasets:ds},options:{...base,plugins:{legend:{display:a.setMonth>0,labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur0(c.parsed.y)}`}}}}}));
+        charts.push(new Chart(ec,{type:'line',data:{labels:lab,datasets:ds},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur0(c.parsed.y)}`}}}}}));
       }
     }
   });
@@ -645,7 +665,7 @@ function resetTariffForm(){
 }
 function startEditTariff(t){
   state.editTariff=t.id; $('tMedia').value=t.media_type; tariffLabel();
-  $('tPrice').value=t.price_per_unit; $('tBase').value=t.base_fee_month; $('tAdv').value=t.advance_month; $('tFrom').value=t.valid_from;
+  $('tPrice').value=t.price_per_unit; $('tBase').value=t.base_fee_month; $('tFrom').value=t.valid_from;
   if (t.kwh_per_m3) $('tFactor').value=t.kwh_per_m3;
   $('tSubmit').textContent='Änderung speichern'; $('tCancel').classList.remove('hidden'); window.scrollTo(0,0);
 }
@@ -654,7 +674,7 @@ $('tarForm').onsubmit = async e => {
   e.preventDefault(); msg('tMsg','');
   const k=$('tMedia').value;
   const row={ media_type:k, valid_from:$('tFrom').value, price_per_unit:parseFloat($('tPrice').value),
-    base_fee_month:parseFloat($('tBase').value)||0, advance_month:parseFloat($('tAdv').value)||0,
+    base_fee_month:parseFloat($('tBase').value)||0, advance_month:0,
     kwh_per_m3: k==='gas' ? (parseFloat($('tFactor').value)||null) : null };
   const { error } = state.editTariff ? await sb.from('tariffs').update(row).eq('id',state.editTariff) : await sb.from('tariffs').insert(row);
   if (error) return msg('tMsg',error.message);
@@ -666,7 +686,7 @@ function renderTariffs(){
   if(!rows.length){ ul.innerHTML='<li class="empty" style="display:block;border:0">Noch kein Tarif.</li>'; return; }
   rows.forEach(t=>{
     const M=MEDIA[t.media_type]; const li=document.createElement('li');
-    li.innerHTML=`<div><span class="dot" style="background:var(${M.color})"></span><b>${esc(M.label)}: ${num(Number(t.price_per_unit),4)} €/${M.bill}</b><small>ab ${fdate(t.valid_from)} · Grundgebühr ${eur(Number(t.base_fee_month))} · zurückgelegt ${eur(Number(t.advance_month))}/Monat${t.kwh_per_m3?' · '+num(Number(t.kwh_per_m3),3)+' kWh/m³':''}</small></div>`;
+    li.innerHTML=`<div><span class="dot" style="background:var(${M.color})"></span><b>${esc(M.label)}: ${num(Number(t.price_per_unit),4)} €/${M.bill}</b><small>ab ${fdate(t.valid_from)} · Grundgebühr ${eur(Number(t.base_fee_month))}${t.kwh_per_m3?' · '+num(Number(t.kwh_per_m3),3)+' kWh/m³':''}</small></div>`;
     const eb=document.createElement('button'); eb.className='del'; eb.style.cssText='color:var(--accent);margin-left:auto'; eb.textContent='Ändern'; eb.onclick=()=>startEditTariff(t);
     li.appendChild(eb);
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
