@@ -13,62 +13,78 @@
 <title>Energy Monitoring</title>
 <style>
 :root{
-  --bg:#f4f6fa; --card:#ffffff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
-  --accent:#4f46e5; --accent-text:#ffffff; --danger:#dc2626; --ok:#16a34a;
-  --strom:#d97706; --gas:#e0562b; --wasser:#2563eb;
-  --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.06);
+  --bg:#f3f5fb; --card:rgba(255,255,255,.78); --solid:#ffffff; --text:#0f172a; --muted:#64748b; --line:rgba(100,116,139,.18);
+  --accent:#6366f1; --accent2:#06b6d4; --accent-text:#ffffff; --danger:#e11d48; --ok:#059669;
+  --strom:#f59e0b; --gas:#f43f5e; --wasser:#0ea5e9;
+  --shadow:0 1px 2px rgba(15,23,42,.05),0 10px 30px rgba(79,70,229,.08);
+  --b1:rgba(99,102,241,.30); --b2:rgba(6,182,212,.22); --b3:rgba(236,72,153,.16);
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#0b1020; --card:#151b2e; --text:#e8ecf5; --muted:#93a0b8; --line:#26304a;
-    --accent:#818cf8; --accent-text:#0b1020; --danger:#f87171; --ok:#4ade80;
-    --strom:#fbbf24; --gas:#fb7c52; --wasser:#60a5fa;
-    --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);
+    --bg:#0a0e1d; --card:rgba(22,28,52,.72); --solid:#161c34; --text:#eaeefb; --muted:#94a0bd; --line:rgba(148,163,184,.16);
+    --accent:#818cf8; --accent2:#22d3ee; --accent-text:#0a0e1d; --danger:#fb7185; --ok:#34d399;
+    --strom:#fbbf24; --gas:#fb7185; --wasser:#38bdf8;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px rgba(0,0,0,.35);
+    --b1:rgba(99,102,241,.35); --b2:rgba(6,182,212,.20); --b3:rgba(236,72,153,.16);
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);
-  padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom));min-height:100vh;font-size:16px;line-height:1.4}
-.wrap{max-width:720px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:4px 0 2px}
-h2{font-size:16px;margin:0 0 10px}
-.sub{color:var(--muted);font-size:14px;margin:0 0 14px}
-.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
-label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);
-  border-radius:10px;padding:11px 12px;min-height:44px}
+body{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);
+  padding:env(safe-area-inset-top) 0 calc(86px + env(safe-area-inset-bottom));min-height:100vh;font-size:16px;line-height:1.4;position:relative}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(520px 380px at 8% -6%,var(--b1),transparent 70%),radial-gradient(460px 380px at 104% 6%,var(--b2),transparent 70%),radial-gradient(520px 480px at 50% 112%,var(--b3),transparent 70%)}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px}
+h1{font-size:26px;letter-spacing:-.02em;margin:6px 0 2px}
+h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.card{background:var(--card);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;letter-spacing:.02em}
+input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--solid);border:1px solid var(--line);border-radius:14px;padding:11px 13px;min-height:46px}
 input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
-button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;padding:0 16px}
-.btn{background:var(--accent);color:var(--accent-text);font-weight:600;width:100%;margin-top:14px}
-.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);margin-top:8px}
-.btn.small{width:auto;min-height:36px;padding:0 12px;margin:0;font-size:14px}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;padding:0 16px}
+.btn{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;font-weight:650;width:100%;margin-top:16px;box-shadow:0 8px 20px rgba(99,102,241,.35)}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);margin-top:10px;box-shadow:none}
 .del{background:transparent;color:var(--danger);min-height:36px;padding:0 8px;font-size:14px}
-.row{display:flex;gap:10px}.row>*{flex:1}
-.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px}
-.chip{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:999px;min-height:38px;padding:0 16px;white-space:nowrap}
-.chip.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px}
+.chip{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:999px;min-height:40px;padding:0 18px;white-space:nowrap;backdrop-filter:blur(10px)}
+.chip.on{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border-color:transparent;font-weight:650;box-shadow:0 6px 16px rgba(99,102,241,.35)}
+.hero{position:relative;overflow:hidden;border-radius:26px;padding:22px;margin-bottom:14px;color:#fff;
+  background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 55%,#06b6d4 120%);box-shadow:0 18px 40px rgba(79,70,229,.35)}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero::before{width:220px;height:220px;right:-70px;top:-80px}
+.hero::after{width:140px;height:140px;right:50px;bottom:-70px;background:rgba(255,255,255,.08)}
+.hero small{display:block;opacity:.85;font-size:13px}
+.hero b{display:block;font-size:40px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin:4px 0 2px;position:relative}
+.hero .meta{position:relative;font-size:13px;opacity:.9}
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.kpi{background:var(--bg);border-radius:12px;padding:12px}
-.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.kpi{background:var(--solid);border:1px solid var(--line);border-radius:16px;padding:13px}
+.kpi b{display:block;font-size:19px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .kpi span{font-size:12px;color:var(--muted)}
 .kpi.warn b{color:var(--danger)} .kpi.good b{color:var(--ok)}
+.banner{border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:14px;border:1px solid var(--line);background:var(--card)}
+.banner.alert{border-color:var(--danger);color:var(--danger)}
 .list{list-style:none;margin:0;padding:0}
-.list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid var(--line)}
 .list li:last-child{border-bottom:0}
 .list small{color:var(--muted);display:block}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
-.nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
-  display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
-.nav button{flex:1;background:transparent;color:var(--muted);border-radius:0;min-height:58px;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-.nav button svg{width:22px;height:22px}
-.nav button.on{color:var(--accent);font-weight:600}
+.nav{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:696px;margin:0 auto;background:var(--card);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:22px;display:flex;padding:4px;z-index:5;box-shadow:var(--shadow)}
+.nav button{flex:1;background:transparent;color:var(--muted);border-radius:18px;min-height:54px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0}
+.nav button svg{width:21px;height:21px}
+.nav button.on{color:var(--accent);background:rgba(99,102,241,.14);font-weight:650}
 .hidden{display:none!important}
 .msg{font-size:14px;margin-top:10px;color:var(--danger)} .msg.ok{color:var(--ok)}
-.empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
-.chartbox{position:relative;height:220px}
-.note{font-size:13px;color:var(--muted);margin-top:8px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));background:var(--text);color:var(--bg);
+.empty{color:var(--muted);text-align:center;padding:20px 8px;font-size:14px}
+.chartbox{position:relative;height:230px}
+.chartbox.tall{height:260px}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.mrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+.mrow span{width:92px;font-size:14px;flex:none}
+.mrow input{min-height:42px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--text);color:var(--bg);
   padding:10px 16px;border-radius:999px;font-size:14px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 </style>
@@ -103,7 +119,7 @@ button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;p
 
     <section id="tab-read" class="hidden">
       <h1>Ablesen</h1>
-      <p class="sub">Zählerstand eintragen. Der Verbrauch ergibt sich aus der Differenz zur letzten Ablesung.</p>
+      <p class="sub">Trage ein, wann du magst. Der Verbrauch wird aus den Abständen berechnet und bis heute hochgerechnet.</p>
       <form id="readForm" class="card">
         <label for="rMeter">Zähler</label>
         <select id="rMeter" required></select>
@@ -117,6 +133,17 @@ button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;p
         <button class="btn" type="submit">Speichern</button>
         <div id="rMsg" class="msg"></div>
       </form>
+
+      <div class="card">
+        <h2>Rückblick: Monatsendstände nachtragen</h2>
+        <p class="sub" style="margin-bottom:6px">Stand jeweils am letzten Tag des Monats. Leere Felder werden übersprungen.</p>
+        <label for="bMeter">Zähler</label>
+        <select id="bMeter"></select>
+        <div id="bRows"></div>
+        <button class="btn" id="bSave" type="button">Alle eingetragenen speichern</button>
+        <div id="bMsg" class="msg"></div>
+      </div>
+
       <div class="card">
         <h2>Letzte Ablesungen</h2>
         <ul class="list" id="readList"></ul>
@@ -136,7 +163,7 @@ button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;p
           <div><label for="tBase">Grundgebühr (€ / Monat)</label><input id="tBase" type="number" step="any" inputmode="decimal" value="0"></div>
         </div>
         <div class="row">
-          <div><label for="tAdv">Abschlag (€ / Monat)</label><input id="tAdv" type="number" step="any" inputmode="decimal" value="0"></div>
+          <div><label for="tAdv">Schon zurückgelegt (€ / Monat, optional)</label><input id="tAdv" type="number" step="any" inputmode="decimal" value="0"></div>
           <div><label for="tFrom">Gültig ab</label><input id="tFrom" type="date" required></div>
         </div>
         <div id="tFactorWrap" class="hidden">
@@ -164,8 +191,9 @@ button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;p
       </form>
       <div class="card"><h2>Meine Zähler</h2><ul class="list" id="meterList"></ul></div>
       <div class="card">
-        <h2>Konto</h2>
+        <h2>Konto & Daten</h2>
         <div class="note" id="who"></div>
+        <button class="btn ghost" id="csvBtn" type="button">Ablesungen als CSV exportieren</button>
         <button class="btn ghost" id="logoutBtn" type="button">Abmelden</button>
       </div>
     </section>
@@ -193,21 +221,24 @@ const SB_KEY = 'sb_publishable_1nyM6StYHjQBgVZP6pbNqg_-RBP5W9S';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 const MEDIA = {
-  strom:  { label:'Strom',  color:'--strom',  unit:'kWh', bill:'kWh' },
-  gas:    { label:'Gas',    color:'--gas',    unit:'m³',  bill:'kWh' },
-  wasser: { label:'Wasser', color:'--wasser', unit:'m³',  bill:'m³'  }
+  strom:  { label:'Strom',  color:'--strom',  bill:'kWh', co2:0.38 },
+  gas:    { label:'Gas',    color:'--gas',    bill:'kWh', co2:0.20 },
+  wasser: { label:'Wasser', color:'--wasser', bill:'m³',  co2:0 }
 };
 const $ = id => document.getElementById(id);
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eur = n => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n);
+const eur0 = n => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
 const num = (n,d=1) => new Intl.NumberFormat('de-DE',{maximumFractionDigits:d,minimumFractionDigits:0}).format(n);
 const fdate = s => { const [y,m,d]=s.split('-'); return `${d}.${m}.${y}`; };
 const dayNum = s => Math.round(Date.parse(s+'T00:00:00Z')/86400000);
+const dayStr = n => new Date(n*86400000).toISOString().slice(0,10);
 const today = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const MONTH = 30.4375;
+const monLabel = k => { const [y,m]=k.split('-'); return new Intl.DateTimeFormat('de-DE',{month:'short'}).format(new Date(Date.UTC(+y,+m-1,1))).replace('.','')+(m==='01'?" '"+y.slice(2):''); };
 
-let state = { meters:[], readings:[], tariffs:[], media:'strom', user:null };
+let state = { meters:[], readings:[], tariffs:[], view:'gesamt', user:null };
 let charts = [];
 let signUp = false;
 
@@ -260,129 +291,228 @@ function tariffFor(media){
   return l.length ? l[l.length-1] : null;
 }
 function factorFor(meter, tariff){
-  // Umrechnung auf Abrechnungseinheit (Gas: m³ -> kWh)
   if (meter.media_type==='gas' && meter.unit==='m3') return tariff && tariff.kwh_per_m3 ? Number(tariff.kwh_per_m3) : 1;
   return 1;
 }
 function analyze(media){
   const tariff = tariffFor(media);
   const meters = state.meters.filter(m=>m.media_type===media);
-  const intervals = [];
-  let qty=0, days=0, first=null, last=null;
+  const per=[]; const intervals=[]; const dayQty={};
+  let qty=0, first=null, last=null;
   meters.forEach(m=>{
     const rs = state.readings.filter(r=>r.meter_id===m.id).sort((a,b)=>a.reading_date<b.reading_date?-1:1);
+    if(!rs.length) return;
     const f = factorFor(m,tariff);
+    const iv=[];
     for (let i=1;i<rs.length;i++){
       const d = dayNum(rs[i].reading_date)-dayNum(rs[i-1].reading_date);
-      const q = (Number(rs[i].value)-Number(rs[i-1].value))*f;
       if (d<=0) continue;
-      intervals.push({ from:rs[i-1].reading_date, to:rs[i].reading_date, days:d, qty:q, perDay:q/d });
-      qty+=q; days+=d;
+      const raw = Number(rs[i].value)-Number(rs[i-1].value);
+      iv.push({ from:rs[i-1].reading_date, to:rs[i].reading_date, days:d, raw, qty:raw*f, perDay:raw*f/d, rawPerDay:raw/d });
     }
-    if (rs.length){
-      if (!first || rs[0].reading_date<first) first=rs[0].reading_date;
-      if (!last || rs[rs.length-1].reading_date>last) last=rs[rs.length-1].reading_date;
-    }
+    const lastDate=rs[rs.length-1].reading_date, lastVal=Number(rs[rs.length-1].value);
+    const totD=iv.reduce((s,x)=>s+x.days,0), totQ=iv.reduce((s,x)=>s+x.qty,0), totRaw=iv.reduce((s,x)=>s+x.raw,0);
+    const cut=dayNum(lastDate)-90; const rec=iv.filter(x=>dayNum(x.to)>cut);
+    const recD=rec.reduce((s,x)=>s+x.days,0), recQ=rec.reduce((s,x)=>s+x.qty,0), recRaw=rec.reduce((s,x)=>s+x.raw,0);
+    const rateAll = totD? totQ/totD : 0, rateRec = recD? recQ/recD : rateAll;
+    const rawRec = recD? recRaw/recD : (totD? totRaw/totD : 0);
+    per.push({ m, f, lastDate, lastVal, rateAll, rateRec, rawRec, firstDate:rs[0].reading_date });
+    iv.forEach(x=>{ intervals.push(x); for(let d=dayNum(x.from)+1; d<=dayNum(x.to); d++) dayQty[d]=(dayQty[d]||0)+x.perDay; });
+    qty+=totQ;
+    if (!first || rs[0].reading_date<first) first=rs[0].reading_date;
+    if (!last || lastDate>last) last=lastDate;
   });
   intervals.sort((a,b)=>a.to<b.to?-1:1);
-  const nMeters = meters.length || 1;
   const spanDays = first&&last ? dayNum(last)-dayNum(first) : 0;
-  const perDayAll = days>0 ? qty/(days/nMeters) : 0;
-  const pd = spanDays>0 ? perDayAll : 0;
   let unit = MEDIA[media].bill;
   if (media==='gas' && meters.some(m=>m.unit==='m3') && !(tariff && tariff.kwh_per_m3)) unit='m³';
-  const res = { media, tariff, meters, intervals, qty, spanDays, perDay:pd, first, last, unit };
-  if (tariff && spanDays>0){
-    const months = (days/nMeters)/MONTH;
-    const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month), adv=Number(tariff.advance_month);
-    res.costSpan = qty*price + base*months;
-    res.advSpan = adv*months;
-    res.diffSpan = res.costSpan-res.advSpan;
-    res.yearQty = pd*365;
+  const rateAll = per.reduce((s,p)=>s+p.rateAll,0), rate = per.reduce((s,p)=>s+p.rateRec,0);
+  const res = { media, tariff, meters, per, intervals, dayQty, qty, spanDays, rate, rateAll, first, last, unit, hasData: intervals.length>0 };
+  if (!res.hasData) return res;
+
+  const tn=dayNum(today());
+  res.sinceLast = Math.max(0, tn-dayNum(last));
+  res.qtyToday = qty + rate*res.sinceLast;
+  res.spanToday = Math.max(1, tn-dayNum(first));
+  res.yearQty = rate*365;
+  res.co2Year = unit==='kWh' ? res.yearQty*MEDIA[media].co2 : 0;
+  res.est = per.map(p=>({ m:p.m, value: p.lastVal + p.rawRec*res.sinceLast }));
+
+  // letzter Zeitraum auffällig?
+  if (intervals.length>=3){
+    const li=intervals[intervals.length-1];
+    if (rateAll>0 && li.perDay>1.4*rateAll) res.alert = Math.round((li.perDay/rateAll-1)*100);
+  }
+  if (tariff){
+    const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month), set=Number(tariff.advance_month);
+    res.price=price; res.base=base;
+    res.costToday = res.qtyToday*price + base*res.spanToday/MONTH;
+    res.setAside = set*res.spanToday/MONTH;
+    res.gap = res.costToday - res.setAside;
     res.yearCost = res.yearQty*price + base*12;
-    res.yearAdv = adv*12;
-    res.yearDiff = res.yearCost-res.yearAdv;
     res.monthCost = res.yearCost/12;
-    res.reserveMonth = Math.max(0,res.yearDiff)/12;
+    res.dayCost = rate*price + base/MONTH;
+    res.setMonth = set;
+    // Monatsaggregate
+    const months={};
+    const fd=dayNum(first), ld=dayNum(last);
+    for (let d=fd+1; d<=ld; d++){
+      const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0});
+      o.qty += dayQty[d]||0; o.days++;
+    }
+    Object.values(months).forEach(o=>{ o.cost = o.qty*price + base*o.days/MONTH; });
+    res.months=months;
+  } else {
+    const months={}; const fd=dayNum(first), ld=dayNum(last);
+    for (let d=fd+1; d<=ld; d++){ const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0}); o.qty+=dayQty[d]||0; o.days++; }
+    res.months=months;
   }
   return res;
 }
 
 /* ---------- Rendering ---------- */
-function renderAll(){ renderHome(); renderReadForm(); renderReadList(); renderTariffs(); renderMeters(); }
-
+function renderAll(){ renderHome(); renderReadForm(); renderBulk(); renderReadList(); renderTariffs(); renderMeters(); }
 function killCharts(){ charts.forEach(c=>c.destroy()); charts=[]; }
 
 function renderHome(){
   killCharts();
   const chips=$('homeChips'); chips.innerHTML='';
-  Object.keys(MEDIA).forEach(k=>{
-    const b=document.createElement('button'); b.className='chip'+(state.media===k?' on':''); b.textContent=MEDIA[k].label;
-    b.onclick=()=>{state.media=k; renderHome();}; chips.appendChild(b);
+  [['gesamt','Gesamt'],['strom','Strom'],['gas','Gas'],['wasser','Wasser']].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.className='chip'+(state.view===k?' on':''); b.textContent=l;
+    b.onclick=()=>{state.view=k; renderHome();}; chips.appendChild(b);
   });
-  const body=$('homeBody'); const a=analyze(state.media); const M=MEDIA[state.media];
-  $('homeSub').textContent = a.last ? `Letzte Ablesung: ${fdate(a.last)}` : 'Noch keine Ablesung vorhanden.';
+  const body=$('homeBody');
+  const lastAny = state.readings.length ? state.readings.map(r=>r.reading_date).sort().pop() : null;
+  $('homeSub').textContent = lastAny ? `Stand ${fdate(today())} · letzte Ablesung ${fdate(lastAny)}` : 'Noch keine Ablesung vorhanden.';
+  let h='';
+  if (lastAny){
+    const ago=dayNum(today())-dayNum(lastAny);
+    if (ago>=7) h+=`<div class="banner">Letzte Ablesung vor ${ago} Tagen. Zeit für neue Zählerstände?</div>`;
+  }
+  if (!state.meters.length){ body.innerHTML=h+'<div class="card empty">Lege zuerst unter „Zähler" deine Zähler an.</div>'; return; }
+  body.innerHTML = h + (state.view==='gesamt' ? viewTotal() : viewMedia(state.view));
+  drawCharts();
+}
 
-  if (!a.meters.length){ body.innerHTML='<div class="card empty">Lege zuerst unter „Zähler" einen Zähler für '+esc(M.label)+' an.</div>'; return; }
-  if (a.intervals.length<1){ body.innerHTML='<div class="card empty">Für einen Verbrauch brauche ich mindestens zwei Ablesungen. Trage unter „Ablesen" deinen Startwert ein und beim nächsten Mal den neuen Stand.</div>'; return; }
+function kpi(v,l,cls=''){ return `<div class="kpi ${cls}"><b>${v}</b><span>${l}</span></div>`; }
 
+let chartJobs=[];
+function viewTotal(){
+  chartJobs=[];
+  const all=Object.keys(MEDIA).map(analyze).filter(a=>a.hasData && a.tariff);
+  if (!all.length) return '<div class="card empty">Für die Gesamtansicht brauche ich pro Energieart mindestens zwei Ablesungen und einen Tarif.</div>';
+  const sum=f=>all.reduce((s,a)=>s+f(a),0);
+  const month=sum(a=>a.monthCost), year=sum(a=>a.yearCost), costNow=sum(a=>a.costToday), set=sum(a=>a.setAside), day=sum(a=>a.dayCost), co2=sum(a=>a.co2Year);
+  const gap=costNow-set;
+  let h=`<div class="hero"><small>Jetzt zurücklegen pro Monat</small><b>${eur0(month)}</b><div class="meta">Hochrechnung Jahr ${eur0(year)} · ca. ${eur(day)} pro Tag</div></div>`;
+  h+=`<div class="card"><div class="kpis">
+    ${kpi(eur0(costNow),'Kosten bis heute (hochgerechnet)')}
+    ${kpi(eur0(set),'schon zurückgelegt')}
+    ${kpi(eur0(Math.abs(gap)), gap>0?'noch zurückzulegen':'Überschuss', gap>0?'warn':'good')}
+    ${kpi(co2? num(co2,0)+' kg':'–','CO₂ pro Jahr (Richtwert)')}
+  </div>`;
+  const alerts=all.filter(a=>a.alert).map(a=>`${MEDIA[a.media].label}: letzter Zeitraum ${a.alert} % über dem Schnitt`);
+  if (alerts.length) h+=`<div class="note" style="color:var(--danger)">Auffällig: ${esc(alerts.join(' · '))}</div>`;
+  h+=`</div>`;
+  h+=`<div class="card"><h2>Kostenanteile (Jahr)</h2><div class="chartbox"><canvas id="cDonut"></canvas></div></div>`;
+  h+=`<div class="card"><h2>Kosten pro Monat</h2><div class="chartbox tall"><canvas id="cStack"></canvas></div></div>`;
+  chartJobs.push({type:'donut',all},{type:'stack',all});
+  return h;
+}
+
+function viewMedia(media){
+  chartJobs=[];
+  const a=analyze(media), M=MEDIA[media];
+  if (!a.meters.length) return `<div class="card empty">Lege zuerst unter „Zähler" einen ${esc(M.label)}-Zähler an.</div>`;
+  if (!a.hasData) return '<div class="card empty">Für einen Verbrauch brauche ich mindestens zwei Ablesungen. Trage unter „Ablesen" deinen Startwert ein, oder gleich die Monatsendstände im Rückblick.</div>';
   const u=a.unit; let h='';
-  h+=`<div class="card"><h2>Verbrauch</h2><div class="kpis">
-    <div class="kpi"><b>${num(a.qty)} ${u}</b><span>seit ${fdate(a.first)} (${a.spanDays} Tage)</span></div>
-    <div class="kpi"><b>${num(a.perDay,2)} ${u}</b><span>Ø pro Tag</span></div>
-    <div class="kpi"><b>${num(a.perDay*30.4375,0)} ${u}</b><span>Ø pro Monat</span></div>
-    <div class="kpi"><b>${a.intervals.length ? num(a.intervals[a.intervals.length-1].perDay,2) : '–'} ${u}</b><span>zuletzt pro Tag</span></div>
-  </div></div>`;
-  if (a.tariff && a.yearCost!==undefined){
-    const warn = a.yearDiff>0;
-    h+=`<div class="card"><h2>Kosten & Rückstellung</h2><div class="kpis">
-      <div class="kpi"><b>${eur(a.costSpan)}</b><span>Kosten bisher</span></div>
-      <div class="kpi"><b>${eur(a.monthCost)}</b><span>Ø Kosten pro Monat</span></div>
-      <div class="kpi"><b>${eur(a.yearCost)}</b><span>Hochrechnung Jahr</span></div>
-      <div class="kpi"><b>${eur(a.yearAdv)}</b><span>Abschläge pro Jahr</span></div>
-      <div class="kpi ${warn?'warn':'good'}"><b>${eur(Math.abs(a.yearDiff))}</b><span>${warn?'erwartete Nachzahlung':'erwartetes Guthaben'} / Jahr</span></div>
-      <div class="kpi ${warn?'warn':'good'}"><b>${eur(a.reserveMonth)}</b><span>zurücklegen pro Monat</span></div>
-    </div>
-    <div class="note">Stand bisher: ${a.diffSpan>0?'Kosten liegen '+eur(a.diffSpan)+' über den Abschlägen':'Abschläge liegen '+eur(-a.diffSpan)+' über den Kosten'}. Die Hochrechnung nutzt den Durchschnitt seit der ersten Ablesung${a.spanDays<60?' und ist bei wenig Daten noch ungenau':''}.</div></div>`;
+  if (a.tariff){
+    h+=`<div class="hero"><small>${esc(M.label)}: jetzt zurücklegen pro Monat</small><b>${eur0(a.monthCost)}</b><div class="meta">Hochrechnung Jahr ${eur0(a.yearCost)} · ca. ${eur(a.dayCost)} pro Tag</div></div>`;
   } else {
-    h+=`<div class="card empty">Trage unter „Tarife" deinen ${esc(M.label)}-Tarif ein, dann zeige ich Kosten und Rückstellung.</div>`;
+    h+=`<div class="hero"><small>${esc(M.label)}: Ø Verbrauch pro Tag</small><b>${num(a.rate,2)} ${u}</b><div class="meta">Hochrechnung Jahr ${num(a.yearQty,0)} ${u}</div></div>`;
   }
-  h+=`<div class="card"><h2>Verbrauch pro Tag (je Ablesung)</h2><div class="chartbox"><canvas id="c1"></canvas></div></div>`;
-  if (a.tariff) h+=`<div class="card"><h2>Kosten und Abschläge, aufsummiert</h2><div class="chartbox"><canvas id="c2"></canvas></div></div>`;
-  body.innerHTML=h;
-  drawCharts(a);
+  h+=`<div class="card"><h2>Verbrauch</h2><div class="kpis">
+    ${kpi(num(a.qtyToday,0)+' '+u,'seit '+fdate(a.first)+' (bis heute geschätzt)')}
+    ${kpi(num(a.rate,2)+' '+u,'pro Tag (Trend der letzten ~90 Tage)')}
+    ${kpi(num(a.rate*MONTH,0)+' '+u,'pro Monat')}
+    ${kpi(num(a.yearQty,0)+' '+u,'Hochrechnung Jahr')}
+  </div>`;
+  if (a.alert) h+=`<div class="note" style="color:var(--danger)">Auffällig: Der letzte Zeitraum liegt ${a.alert} % über deinem Durchschnitt${media==='wasser'?'. Bitte auf Leckagen achten.':'.'}</div>`;
+  h+=`</div>`;
+  if (a.tariff){
+    h+=`<div class="card"><h2>Kosten & Rückstellung</h2><div class="kpis">
+      ${kpi(eur0(a.costToday),'Kosten bis heute')}
+      ${kpi(eur0(a.setAside),'schon zurückgelegt')}
+      ${kpi(eur0(Math.abs(a.gap)), a.gap>0?'noch zurückzulegen':'Überschuss', a.gap>0?'warn':'good')}
+      ${kpi(a.co2Year? num(a.co2Year,0)+' kg':'–','CO₂ pro Jahr (Richtwert)')}
+    </div></div>`;
+  } else {
+    h+=`<div class="card empty">Trage unter „Tarife" deinen ${esc(M.label)}-Tarif ein, dann rechne ich Kosten und Rückstellung aus.</div>`;
+  }
+  // geschätzte Zählerstände
+  if (a.sinceLast>0){
+    h+=`<div class="card"><h2>Geschätzter Zählerstand heute</h2><ul class="list">`+
+      a.est.map(e=>`<li><div><b>${num(e.value,1)} ${e.m.unit==='m3'?'m³':'kWh'}</b><small>${esc(e.m.meter_number)}${e.m.description?' · '+esc(e.m.description):''} · seit ${a.sinceLast} Tagen nicht abgelesen</small></div></li>`).join('')+`</ul></div>`;
+  }
+  h+=`<div class="card"><h2>Verbrauch pro Monat</h2><div class="chartbox"><canvas id="cBars"></canvas></div></div>`;
+  h+=`<div class="card"><h2>Tagesverbrauch je Ablesung</h2><div class="chartbox"><canvas id="cLine"></canvas></div></div>`;
+  if (a.tariff) h+=`<div class="card"><h2>Kosten aufsummiert${a.setMonth>0?' und zurückgelegt':''}</h2><div class="chartbox"><canvas id="cCum"></canvas></div></div>`;
+  chartJobs.push({type:'media',a});
+  return h;
 }
 
-function drawCharts(a){
+function drawCharts(){
   if (typeof Chart==='undefined') return;
-  const col=css(MEDIA[a.media].color), muted=css('--muted'), line=css('--line');
-  Chart.defaults.color=muted; Chart.defaults.font.family='system-ui,sans-serif';
-  const labels=a.intervals.map(i=>fdate(i.to).slice(0,6));
-  const grid={color:line}, base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid,beginAtZero:true}}};
-  const c1=$('c1');
-  if (c1) charts.push(new Chart(c1,{type:'line',data:{labels,datasets:[{data:a.intervals.map(i=>+i.perDay.toFixed(3)),borderColor:col,backgroundColor:col+'33',fill:true,tension:.35,pointRadius:3,borderWidth:2.5}]},options:base}));
-  const c2=$('c2');
-  if (c2 && a.tariff){
-    const price=Number(a.tariff.price_per_unit), baseFee=Number(a.tariff.base_fee_month)/MONTH, adv=Number(a.tariff.advance_month)/MONTH;
-    let cc=0,ca=0; const cost=[],pay=[];
-    a.intervals.forEach(i=>{ cc+=i.qty*price+baseFee*i.days; ca+=adv*i.days; cost.push(+cc.toFixed(2)); pay.push(+ca.toFixed(2)); });
-    charts.push(new Chart(c2,{type:'line',data:{labels,datasets:[
-      {label:'Kosten',data:cost,borderColor:col,tension:.3,pointRadius:2,borderWidth:2.5},
-      {label:'Abschläge',data:pay,borderColor:muted,borderDash:[6,4],tension:.3,pointRadius:0,borderWidth:2}
-    ]},options:{...base,plugins:{legend:{display:true,labels:{boxWidth:12}}}}}));
-  }
+  const muted=css('--muted'), line=css('--line'), text=css('--text');
+  Chart.defaults.color=muted; Chart.defaults.font.family='Inter,system-ui,sans-serif'; Chart.defaults.font.size=11;
+  Chart.defaults.plugins.tooltip.cornerRadius=10; Chart.defaults.plugins.tooltip.padding=10;
+  const grad=(color)=>ctx=>{ const ch=ctx.chart; if(!ch.chartArea) return color+'33'; const g=ch.ctx.createLinearGradient(0,ch.chartArea.top,0,ch.chartArea.bottom); g.addColorStop(0,color+'99'); g.addColorStop(1,color+'00'); return g; };
+  const scales={ x:{grid:{display:false},border:{display:false}}, y:{grid:{color:line},border:{display:false},beginAtZero:true} };
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales};
+
+  chartJobs.forEach(j=>{
+    if (j.type==='donut'){
+      const el=$('cDonut'); if(!el) return;
+      charts.push(new Chart(el,{type:'doughnut',data:{labels:j.all.map(a=>MEDIA[a.media].label),datasets:[{data:j.all.map(a=>+a.yearCost.toFixed(0)),backgroundColor:j.all.map(a=>css(MEDIA[a.media].color)),borderWidth:0,spacing:4,borderRadius:8}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.label}: ${eur0(c.parsed)}`}}}}}));
+    }
+    if (j.type==='stack'){
+      const el=$('cStack'); if(!el) return;
+      const keys=[...new Set(j.all.flatMap(a=>Object.keys(a.months)))].sort();
+      charts.push(new Chart(el,{type:'bar',data:{labels:keys.map(monLabel),datasets:j.all.map(a=>({label:MEDIA[a.media].label,data:keys.map(k=>a.months[k]?+a.months[k].cost.toFixed(2):0),backgroundColor:css(MEDIA[a.media].color),borderRadius:6,borderSkipped:false}))},
+        options:{...base,plugins:{legend:{display:true,labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur(c.parsed.y)}`}}},scales:{x:{...scales.x,stacked:true},y:{...scales.y,stacked:true}}}}));
+    }
+    if (j.type==='media'){
+      const a=j.a, col=css(MEDIA[a.media].color);
+      const keys=Object.keys(a.months).sort(); const u=a.unit;
+      const eb=$('cBars');
+      if (eb) charts.push(new Chart(eb,{type:'bar',data:{labels:keys.map(monLabel),datasets:[{data:keys.map(k=>+a.months[k].qty.toFixed(1)),backgroundColor:col,borderRadius:8,borderSkipped:false}]},
+        options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,1)} ${u}`}}}}}));
+      const el=$('cLine');
+      if (el) charts.push(new Chart(el,{type:'line',data:{labels:a.intervals.map(i=>fdate(i.to).slice(0,6)),datasets:[{data:a.intervals.map(i=>+i.perDay.toFixed(3)),borderColor:col,backgroundColor:grad(col),fill:true,tension:.4,pointRadius:3,pointBackgroundColor:col,borderWidth:3}]},
+        options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,2)} ${u} pro Tag`}}}}}));
+      const ec=$('cCum');
+      if (ec && a.tariff){
+        const lab=[],cost=[],set=[]; let cc=0, cs=0;
+        keys.forEach(k=>{ cc+=a.months[k].cost; cs+=a.setMonth*a.months[k].days/MONTH; lab.push(monLabel(k)); cost.push(+cc.toFixed(2)); set.push(+cs.toFixed(2)); });
+        lab.push('heute'); cost.push(+a.costToday.toFixed(2)); set.push(+a.setAside.toFixed(2));
+        const ds=[{label:'Kosten',data:cost,borderColor:col,backgroundColor:grad(col),fill:true,tension:.35,pointRadius:2,borderWidth:3}];
+        if (a.setMonth>0) ds.push({label:'zurückgelegt',data:set,borderColor:muted,borderDash:[6,5],tension:.35,pointRadius:0,borderWidth:2});
+        charts.push(new Chart(ec,{type:'line',data:{labels:lab,datasets:ds},options:{...base,plugins:{legend:{display:a.setMonth>0,labels:{usePointStyle:true,boxWidth:8,color:text}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${eur0(c.parsed.y)}`}}}}}));
+      }
+    }
+  });
 }
 
-function renderReadForm(){
-  const sel=$('rMeter'); const cur=sel.value; sel.innerHTML='';
+/* ---------- Ablesen ---------- */
+function meterOptions(sel){
+  const cur=sel.value; sel.innerHTML='';
   state.meters.forEach(m=>{ const o=document.createElement('option'); o.value=m.id;
     o.textContent=`${MEDIA[m.media_type].label} · ${m.meter_number}${m.description?' ('+m.description+')':''}`; sel.appendChild(o); });
-  if (cur) sel.value=cur;
-  updateHint();
+  if (cur && state.meters.some(m=>m.id===cur)) sel.value=cur;
 }
-function lastReading(meterId){
-  const rs=state.readings.filter(r=>r.meter_id===meterId); return rs.length?rs[rs.length-1]:null;
-}
+function renderReadForm(){ meterOptions($('rMeter')); updateHint(); }
+function lastReading(meterId){ const rs=state.readings.filter(r=>r.meter_id===meterId); return rs.length?rs[rs.length-1]:null; }
 function updateHint(){
   const m=state.meters.find(x=>x.id===$('rMeter').value);
   if(!m){ $('rHint').textContent='Lege zuerst einen Zähler an.'; return; }
@@ -406,6 +536,40 @@ $('readForm').onsubmit = async e => {
   $('rVal').value=''; $('rNote').value=''; await load(); renderAll(); toast('Gespeichert');
 };
 
+/* Rückblick Monatsenden */
+function renderBulk(){
+  meterOptions($('bMeter'));
+  const box=$('bRows'); box.innerHTML='';
+  const m=state.meters.find(x=>x.id===$('bMeter').value);
+  if(!m){ box.innerHTML='<div class="empty">Lege zuerst einen Zähler an.</div>'; return; }
+  const now=new Date(); const y=now.getFullYear();
+  for (let mi=0; mi<now.getMonth(); mi++){
+    const last=new Date(Date.UTC(y,mi+1,0)).getUTCDate();
+    const date=`${y}-${String(mi+1).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+    const ex=state.readings.find(r=>r.meter_id===m.id && r.reading_date===date);
+    const row=document.createElement('div'); row.className='mrow';
+    row.innerHTML=`<span>${fdate(date).slice(0,6)}${y}</span>`;
+    const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.inputMode='decimal';
+    inp.placeholder=m.unit==='m3'?'m³':'kWh'; inp.dataset.date=date;
+    if (ex){ inp.value=ex.value; inp.disabled=true; }
+    row.appendChild(inp); box.appendChild(row);
+  }
+  if (!box.children.length) box.innerHTML='<div class="empty">Noch kein Monat des laufenden Jahres abgeschlossen.</div>';
+}
+$('bMeter').onchange=renderBulk;
+$('bSave').onclick = async () => {
+  msg('bMsg','');
+  const meter_id=$('bMeter').value; if(!meter_id) return;
+  const rows=[...$('bRows').querySelectorAll('input:not(:disabled)')].filter(i=>i.value!=='')
+    .map(i=>({meter_id,reading_date:i.dataset.date,value:parseFloat(i.value)}));
+  if(!rows.length) return msg('bMsg','Keine neuen Werte eingetragen.');
+  const sorted=[...rows].sort((a,b)=>a.reading_date<b.reading_date?-1:1);
+  for (let i=1;i<sorted.length;i++) if (sorted[i].value<sorted[i-1].value) return msg('bMsg','Ein Wert ist kleiner als der Monat davor. Bitte prüfen.');
+  const { error } = await sb.from('readings').insert(rows);
+  if (error) return msg('bMsg',error.message);
+  await load(); renderAll(); toast(rows.length+' Werte gespeichert');
+};
+
 function renderReadList(){
   const ul=$('readList'); ul.innerHTML='';
   const rows=[...state.readings].sort((a,b)=>a.reading_date<b.reading_date?1:-1).slice(0,30);
@@ -420,7 +584,7 @@ function renderReadList(){
   });
 }
 
-/* Tarife */
+/* ---------- Tarife ---------- */
 function tariffLabel(){
   const k=$('tMedia').value;
   $('tPriceL').textContent = 'Arbeitspreis (€ je '+MEDIA[k].bill+')';
@@ -443,14 +607,14 @@ function renderTariffs(){
   if(!rows.length){ ul.innerHTML='<li class="empty" style="display:block;border:0">Noch kein Tarif.</li>'; return; }
   rows.forEach(t=>{
     const M=MEDIA[t.media_type]; const li=document.createElement('li');
-    li.innerHTML=`<div><span class="dot" style="background:var(${M.color})"></span><b>${esc(M.label)}: ${num(Number(t.price_per_unit),4)} €/${M.bill}</b><small>ab ${fdate(t.valid_from)} · Grundgebühr ${eur(Number(t.base_fee_month))} · Abschlag ${eur(Number(t.advance_month))}${t.kwh_per_m3?' · '+num(Number(t.kwh_per_m3),3)+' kWh/m³':''}</small></div>`;
+    li.innerHTML=`<div><span class="dot" style="background:var(${M.color})"></span><b>${esc(M.label)}: ${num(Number(t.price_per_unit),4)} €/${M.bill}</b><small>ab ${fdate(t.valid_from)} · Grundgebühr ${eur(Number(t.base_fee_month))} · zurückgelegt ${eur(Number(t.advance_month))}/Monat${t.kwh_per_m3?' · '+num(Number(t.kwh_per_m3),3)+' kWh/m³':''}</small></div>`;
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
     b.onclick=async()=>{ if(!confirm('Tarif löschen?')) return; const {error}=await sb.from('tariffs').delete().eq('id',t.id); if(error) return toast(error.message); await load(); renderAll(); };
     li.appendChild(b); ul.appendChild(li);
   });
 }
 
-/* Zähler */
+/* ---------- Zähler ---------- */
 $('meterForm').onsubmit = async e => {
   e.preventDefault(); msg('mMsg','');
   const t=$('mType').value;
@@ -469,6 +633,18 @@ function renderMeters(){
     li.appendChild(b); ul.appendChild(li);
   });
 }
+
+/* CSV-Export */
+$('csvBtn').onclick = () => {
+  const rows=[['Datum','Energieart','Zählernummer','Bezeichnung','Zählerstand','Einheit','Notiz']];
+  [...state.readings].sort((a,b)=>a.reading_date<b.reading_date?-1:1).forEach(r=>{
+    const m=state.meters.find(x=>x.id===r.meter_id); if(!m) return;
+    rows.push([r.reading_date,MEDIA[m.media_type].label,m.meter_number,m.description||'',String(r.value).replace('.',','),m.unit==='m3'?'m3':'kWh',r.notes||'']);
+  });
+  const csv='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='ablesungen.csv'; document.body.appendChild(a); a.click(); a.remove();
+};
 
 /* Tabs */
 document.querySelectorAll('.nav button').forEach(b=>{
