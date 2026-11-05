@@ -130,7 +130,8 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
         <div class="note" id="rHint"></div>
         <label for="rNote">Notiz (optional)</label>
         <input id="rNote" type="text">
-        <button class="btn" type="submit">Speichern</button>
+        <button class="btn" id="rSubmit" type="submit">Speichern</button>
+        <button class="btn ghost hidden" id="rCancel" type="button">Bearbeiten abbrechen</button>
         <div id="rMsg" class="msg"></div>
       </form>
 
@@ -152,7 +153,7 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
 
     <section id="tab-tariff" class="hidden">
       <h1>Tarife</h1>
-      <p class="sub">Für Kosten und Rückstellung. Es gilt jeweils der neueste Tarif je Energieart.</p>
+      <p class="sub">Bei einer Preisänderung legst du einen neuen Tarif mit Datum an. Der alte gilt dann für die Zeit davor. Fehler korrigierst du über „Ändern".</p>
       <form id="tarForm" class="card">
         <label for="tMedia">Energieart</label>
         <select id="tMedia">
@@ -170,7 +171,8 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
           <label for="tFactor">Gas: kWh je m³ (Brennwert × Zustandszahl, steht auf der Rechnung, ca. 10)</label>
           <input id="tFactor" type="number" step="any" inputmode="decimal" value="10">
         </div>
-        <button class="btn" type="submit">Tarif speichern</button>
+        <button class="btn" id="tSubmit" type="submit">Tarif speichern</button>
+        <button class="btn ghost hidden" id="tCancel" type="button">Bearbeiten abbrechen</button>
         <div id="tMsg" class="msg"></div>
       </form>
       <div class="card"><h2>Gespeicherte Tarife</h2><ul class="list" id="tarList"></ul></div>
@@ -346,7 +348,12 @@ function analyze(media){
   if (tariff){
     const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month), set=Number(tariff.advance_month);
     res.price=price; res.base=base;
-    res.costToday = res.qtyToday*price + base*res.spanToday/MONTH;
+    // Preis je Tag: es gilt der jeweils zu diesem Datum gültige Tarif
+    const tl=state.tariffs.filter(t=>t.media_type===media);
+    const at=d=>{ const ds=dayStr(d); let t=tl[0]; tl.forEach(x=>{ if(x.valid_from<=ds) t=x; }); return t; };
+    const fd0=dayNum(first), ld0=dayNum(last); let cost=0;
+    for (let d=fd0+1; d<=tn; d++){ const t=at(d); cost += (d<=ld0 ? (dayQty[d]||0) : rate)*Number(t.price_per_unit) + Number(t.base_fee_month)/MONTH; }
+    res.costToday = cost;
     res.setAside = set*res.spanToday/MONTH;
     res.gap = res.costToday - res.setAside;
     res.yearCost = res.yearQty*price + base*12;
@@ -358,9 +365,9 @@ function analyze(media){
     const fd=dayNum(first), ld=dayNum(last);
     for (let d=fd+1; d<=ld; d++){
       const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0});
-      o.qty += dayQty[d]||0; o.days++;
+      const t=at(d); o.qty += dayQty[d]||0; o.days++;
+      o.cost = (o.cost||0) + (dayQty[d]||0)*Number(t.price_per_unit) + Number(t.base_fee_month)/MONTH;
     }
-    Object.values(months).forEach(o=>{ o.cost = o.qty*price + base*o.days/MONTH; });
     res.months=months;
   } else {
     const months={}; const fd=dayNum(first), ld=dayNum(last);
@@ -520,20 +527,30 @@ function updateHint(){
   $('rHint').textContent = l ? `Letzter Stand: ${num(Number(l.value),3)} ${m.unit==='m3'?'m³':'kWh'} am ${fdate(l.reading_date)}` : 'Das ist die erste Ablesung, sie dient als Startwert. Das Datum kann auch in der Vergangenheit liegen.';
 }
 $('rMeter').onchange=updateHint;
+function resetReadForm(){
+  state.editReading=null; $('rVal').value=''; $('rNote').value=''; $('rDate').value=today();
+  $('rSubmit').textContent='Speichern'; $('rCancel').classList.add('hidden'); msg('rMsg',''); updateHint();
+}
+function startEditReading(r){
+  state.editReading=r.id; $('rMeter').value=r.meter_id; $('rDate').value=r.reading_date; $('rVal').value=r.value; $('rNote').value=r.notes||'';
+  $('rSubmit').textContent='Änderung speichern'; $('rCancel').classList.remove('hidden'); updateHint(); window.scrollTo(0,0);
+}
+$('rCancel').onclick=resetReadForm;
 
 $('readForm').onsubmit = async e => {
   e.preventDefault(); msg('rMsg','');
   const meter_id=$('rMeter').value, reading_date=$('rDate').value, value=parseFloat($('rVal').value);
   if(!meter_id) return msg('rMsg','Bitte zuerst einen Zähler anlegen.');
-  const rs=state.readings.filter(r=>r.meter_id===meter_id);
+  const rs=state.readings.filter(r=>r.meter_id===meter_id && r.id!==state.editReading);
   const before=rs.filter(r=>r.reading_date<=reading_date).pop();
   const after=rs.filter(r=>r.reading_date>reading_date)[0];
   if ((before && value<Number(before.value)) || (after && value>Number(after.value))){
     if(!confirm('Der Stand passt nicht zu den Nachbarwerten (Zähler laufen nur aufwärts). Trotzdem speichern?')) return;
   }
-  const { error } = await sb.from('readings').insert({meter_id,reading_date,value,notes:$('rNote').value.trim()||null});
+  const row={meter_id,reading_date,value,notes:$('rNote').value.trim()||null};
+  const { error } = state.editReading ? await sb.from('readings').update(row).eq('id',state.editReading) : await sb.from('readings').insert(row);
   if (error) return msg('rMsg',error.message);
-  $('rVal').value=''; $('rNote').value=''; await load(); renderAll(); toast('Gespeichert');
+  resetReadForm(); await load(); renderAll(); toast('Gespeichert');
 };
 
 /* Rückblick Monatsenden */
@@ -578,6 +595,8 @@ function renderReadList(){
     const m=state.meters.find(x=>x.id===r.meter_id); if(!m) return;
     const li=document.createElement('li');
     li.innerHTML=`<div><span class="dot" style="background:var(${MEDIA[m.media_type].color})"></span><b>${num(Number(r.value),3)} ${m.unit==='m3'?'m³':'kWh'}</b><small>${esc(MEDIA[m.media_type].label)} · ${fdate(r.reading_date)}${r.notes?' · '+esc(r.notes):''}</small></div>`;
+    const eb=document.createElement('button'); eb.className='del'; eb.style.cssText='color:var(--accent);margin-left:auto'; eb.textContent='Ändern'; eb.onclick=()=>startEditReading(r);
+    li.appendChild(eb);
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
     b.onclick=async()=>{ if(!confirm('Ablesung löschen?')) return; const {error}=await sb.from('readings').delete().eq('id',r.id); if(error) return toast(error.message); await load(); renderAll(); };
     li.appendChild(b); ul.appendChild(li);
@@ -591,15 +610,25 @@ function tariffLabel(){
   $('tFactorWrap').classList.toggle('hidden', k!=='gas');
 }
 $('tMedia').onchange=tariffLabel; tariffLabel();
+function resetTariffForm(){
+  state.editTariff=null; $('tPrice').value=''; $('tSubmit').textContent='Tarif speichern'; $('tCancel').classList.add('hidden'); msg('tMsg','');
+}
+function startEditTariff(t){
+  state.editTariff=t.id; $('tMedia').value=t.media_type; tariffLabel();
+  $('tPrice').value=t.price_per_unit; $('tBase').value=t.base_fee_month; $('tAdv').value=t.advance_month; $('tFrom').value=t.valid_from;
+  if (t.kwh_per_m3) $('tFactor').value=t.kwh_per_m3;
+  $('tSubmit').textContent='Änderung speichern'; $('tCancel').classList.remove('hidden'); window.scrollTo(0,0);
+}
+$('tCancel').onclick=resetTariffForm;
 $('tarForm').onsubmit = async e => {
   e.preventDefault(); msg('tMsg','');
   const k=$('tMedia').value;
   const row={ media_type:k, valid_from:$('tFrom').value, price_per_unit:parseFloat($('tPrice').value),
     base_fee_month:parseFloat($('tBase').value)||0, advance_month:parseFloat($('tAdv').value)||0,
     kwh_per_m3: k==='gas' ? (parseFloat($('tFactor').value)||null) : null };
-  const { error } = await sb.from('tariffs').insert(row);
+  const { error } = state.editTariff ? await sb.from('tariffs').update(row).eq('id',state.editTariff) : await sb.from('tariffs').insert(row);
   if (error) return msg('tMsg',error.message);
-  $('tPrice').value=''; await load(); renderAll(); toast('Tarif gespeichert');
+  resetTariffForm(); await load(); renderAll(); toast('Tarif gespeichert');
 };
 function renderTariffs(){
   const ul=$('tarList'); ul.innerHTML='';
@@ -608,6 +637,8 @@ function renderTariffs(){
   rows.forEach(t=>{
     const M=MEDIA[t.media_type]; const li=document.createElement('li');
     li.innerHTML=`<div><span class="dot" style="background:var(${M.color})"></span><b>${esc(M.label)}: ${num(Number(t.price_per_unit),4)} €/${M.bill}</b><small>ab ${fdate(t.valid_from)} · Grundgebühr ${eur(Number(t.base_fee_month))} · zurückgelegt ${eur(Number(t.advance_month))}/Monat${t.kwh_per_m3?' · '+num(Number(t.kwh_per_m3),3)+' kWh/m³':''}</small></div>`;
+    const eb=document.createElement('button'); eb.className='del'; eb.style.cssText='color:var(--accent);margin-left:auto'; eb.textContent='Ändern'; eb.onclick=()=>startEditTariff(t);
+    li.appendChild(eb);
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
     b.onclick=async()=>{ if(!confirm('Tarif löschen?')) return; const {error}=await sb.from('tariffs').delete().eq('id',t.id); if(error) return toast(error.message); await load(); renderAll(); };
     li.appendChild(b); ul.appendChild(li);
@@ -628,6 +659,14 @@ function renderMeters(){
   state.meters.forEach(m=>{
     const li=document.createElement('li');
     li.innerHTML=`<div><span class="dot" style="background:var(${MEDIA[m.media_type].color})"></span><b>${esc(MEDIA[m.media_type].label)} · ${esc(m.meter_number)}</b><small>${m.unit==='m3'?'m³':'kWh'}${m.description?' · '+esc(m.description):''}</small></div>`;
+    const eb=document.createElement('button'); eb.className='del'; eb.style.cssText='color:var(--accent);margin-left:auto'; eb.textContent='Ändern';
+    eb.onclick=async()=>{
+      const nr=prompt('Zählernummer:',m.meter_number); if(nr===null) return;
+      const ds=prompt('Bezeichnung (optional):',m.description||''); if(ds===null) return;
+      const {error}=await sb.from('meters').update({meter_number:nr.trim()||m.meter_number,description:ds.trim()||null}).eq('id',m.id);
+      if(error) return toast(error.message); await load(); renderAll(); toast('Geändert');
+    };
+    li.appendChild(eb);
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
     b.onclick=async()=>{ if(!confirm('Zähler löschen? Das geht nur, wenn keine Ablesungen mehr daran hängen.')) return; const {error}=await sb.from('meters').delete().eq('id',m.id); if(error) return toast('Erst die Ablesungen löschen'); await load(); renderAll(); };
     li.appendChild(b); ul.appendChild(li);
@@ -656,6 +695,11 @@ document.querySelectorAll('.nav button').forEach(b=>{
   };
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(state.user) renderHome(); });
+
+// Beim Zurückkehren in die App Daten frisch laden
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden && state.user){ await load(); renderHome(); renderReadList(); renderTariffs(); renderMeters(); }
+});
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
