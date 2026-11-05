@@ -124,12 +124,13 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
         <label for="rMeter">Zähler</label>
         <select id="rMeter" required></select>
         <div class="row">
-          <div><label for="rDate">Datum</label><input id="rDate" type="date" required></div>
+          <div><label for="rDate">Datum und Uhrzeit</label><input id="rDate" type="datetime-local" required></div>
           <div><label for="rVal">Zählerstand</label><input id="rVal" type="number" step="any" inputmode="decimal" required></div>
         </div>
         <div class="note" id="rHint"></div>
         <label for="rNote">Notiz (optional)</label>
         <input id="rNote" type="text">
+        <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;color:var(--text)"><input id="rEst" type="checkbox" style="width:auto;min-height:0;flex:none"> Schätzwert (echte Zählerstände haben immer Vorrang)</label>
         <button class="btn" id="rSubmit" type="submit">Speichern</button>
         <button class="btn ghost hidden" id="rCancel" type="button">Bearbeiten abbrechen</button>
         <div id="rMsg" class="msg"></div>
@@ -188,6 +189,10 @@ button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:46px;p
         <input id="mNr" type="text" required>
         <label for="mDesc">Bezeichnung (optional, z. B. Keller)</label>
         <input id="mDesc" type="text">
+        <div class="row">
+          <div><label for="mInstDate">Einbau am (optional)</label><input id="mInstDate" type="date"></div>
+          <div><label for="mInstVal">Stand beim Einbau (meist 0)</label><input id="mInstVal" type="number" step="any" inputmode="decimal"></div>
+        </div>
         <button class="btn" type="submit">Zähler anlegen</button>
         <div id="mMsg" class="msg"></div>
       </form>
@@ -238,6 +243,16 @@ const dayNum = s => Math.round(Date.parse(s+'T00:00:00Z')/86400000);
 const dayStr = n => new Date(n*86400000).toISOString().slice(0,10);
 const today = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const MONTH = 30.4375;
+const tzo = ms => new Date(ms).getTimezoneOffset()*60000;
+const localT = ms => (ms - tzo(ms))/86400000;           // lokale Zeit als Tage (Bruchteile = Uhrzeit)
+const readT = r => localT(r.read_at ? Date.parse(r.read_at) : Date.parse(r.reading_date+'T12:00:00'));
+const nowT = () => localT(Date.now());
+const hhmm = r => { if(!r.read_at) return ''; const t=new Date(r.read_at); return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); };
+const readLabel = r => fdate(r.reading_date).slice(0,6) + (r.read_at ? ' '+hhmm(r) : '');
+const readLabelFull = r => fdate(r.reading_date) + (r.read_at ? ', '+hhmm(r)+' Uhr' : '');
+const agoText = d => d>=1 ? num(Math.round(d),0)+' Tagen' : num(Math.max(1,Math.round(d*24)),0)+' Stunden';
+const nowLocalInput = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
+const toLocalInput = iso => { const d=new Date(iso); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 const monLabel = k => { const [y,m]=k.split('-'); return new Intl.DateTimeFormat('de-DE',{month:'short'}).format(new Date(Date.UTC(+y,+m-1,1))).replace('.','')+(m==='01'?" '"+y.slice(2):''); };
 
 let state = { meters:[], readings:[], tariffs:[], view:'gesamt', user:null };
@@ -280,10 +295,10 @@ async function load(){
   ]);
   const err = m.error||r.error||t.error;
   if (err) { toast('Fehler: '+err.message); return; }
-  state.meters=m.data; state.readings=r.data; state.tariffs=t.data;
+  state.meters=m.data; state.readings=r.data.sort((a,b)=>readT(a)-readT(b)); state.tariffs=t.data;
 }
 async function boot(){
-  $('rDate').value=today(); $('tFrom').value=today();
+  $('rDate').value=nowLocalInput(); $('tFrom').value=today();
   await load(); renderAll();
 }
 
@@ -296,63 +311,81 @@ function factorFor(meter, tariff){
   if (meter.media_type==='gas' && meter.unit==='m3') return tariff && tariff.kwh_per_m3 ? Number(tariff.kwh_per_m3) : 1;
   return 1;
 }
+function effReadings(meterId){
+  const rs=state.readings.filter(r=>r.meter_id===meterId).map(r=>({r,t:readT(r),v:Number(r.value),est:!!r.is_estimate})).sort((a,b)=>a.t-b.t);
+  // Schätzwerte werden auf die echten Nachbarwerte begrenzt: echte Zählerstände haben Vorrang
+  let lastReal=null;
+  rs.forEach((x,i)=>{
+    if(!x.est){ lastReal=x; return; }
+    let nextReal=null; for(let k=i+1;k<rs.length;k++) if(!rs[k].est){ nextReal=rs[k]; break; }
+    if(lastReal && x.v<lastReal.v) x.v=lastReal.v;
+    if(nextReal && x.v>nextReal.v) x.v=nextReal.v;
+  });
+  for(let i=1;i<rs.length;i++) if(rs[i].est && rs[i].v<rs[i-1].v) rs[i].v=rs[i-1].v;
+  return rs;
+}
 function analyze(media){
   const tariff = tariffFor(media);
   const meters = state.meters.filter(m=>m.media_type===media);
   const per=[]; const intervals=[]; const dayQty={};
   let qty=0, first=null, last=null;
   meters.forEach(m=>{
-    const rs = state.readings.filter(r=>r.meter_id===m.id).sort((a,b)=>a.reading_date<b.reading_date?-1:1);
-    if(!rs.length) return;
-    const f = factorFor(m,tariff);
-    const iv=[];
+    const rs=effReadings(m.id); if(!rs.length) return;
+    const f = factorFor(m,tariff); const iv=[];
     for (let i=1;i<rs.length;i++){
-      const d = dayNum(rs[i].reading_date)-dayNum(rs[i-1].reading_date);
-      if (d<=0) continue;
-      const raw = Number(rs[i].value)-Number(rs[i-1].value);
-      iv.push({ from:rs[i-1].reading_date, to:rs[i].reading_date, days:d, raw, qty:raw*f, perDay:raw*f/d, rawPerDay:raw/d });
+      const d = rs[i].t-rs[i-1].t; if (d<=0.0005) continue;
+      const raw = rs[i].v-rs[i-1].v;
+      iv.push({ from:rs[i-1].t, to:rs[i].t, label:readLabel(rs[i].r), days:d, raw, qty:raw*f, perDay:raw*f/d });
     }
-    const lastDate=rs[rs.length-1].reading_date, lastVal=Number(rs[rs.length-1].value);
+    const lastT=rs[rs.length-1].t, lastVal=rs[rs.length-1].v;
     const totD=iv.reduce((s,x)=>s+x.days,0), totQ=iv.reduce((s,x)=>s+x.qty,0), totRaw=iv.reduce((s,x)=>s+x.raw,0);
-    const cut=dayNum(lastDate)-90; const rec=iv.filter(x=>dayNum(x.to)>cut);
+    const rec=iv.filter(x=>x.to>lastT-90);
     const recD=rec.reduce((s,x)=>s+x.days,0), recQ=rec.reduce((s,x)=>s+x.qty,0), recRaw=rec.reduce((s,x)=>s+x.raw,0);
     const rateAll = totD? totQ/totD : 0, rateRec = recD? recQ/recD : rateAll;
     const rawRec = recD? recRaw/recD : (totD? totRaw/totD : 0);
-    per.push({ m, f, lastDate, lastVal, rateAll, rateRec, rawRec, firstDate:rs[0].reading_date });
-    iv.forEach(x=>{ intervals.push(x); for(let d=dayNum(x.from)+1; d<=dayNum(x.to); d++) dayQty[d]=(dayQty[d]||0)+x.perDay; });
+    per.push({ m, f, lastT, lastVal, rateAll, rateRec, rawRec });
+    iv.forEach(x=>{
+      intervals.push(x);
+      for (let d=Math.floor(x.from); d<=Math.floor(x.to); d++){ const ov=Math.min(x.to,d+1)-Math.max(x.from,d); if(ov>0) dayQty[d]=(dayQty[d]||0)+x.perDay*ov; }
+    });
     qty+=totQ;
-    if (!first || rs[0].reading_date<first) first=rs[0].reading_date;
-    if (!last || lastDate>last) last=lastDate;
+    if (first===null || rs[0].t<first) first=rs[0].t;
+    if (last===null || lastT>last) last=lastT;
   });
-  intervals.sort((a,b)=>a.to<b.to?-1:1);
-  const spanDays = first&&last ? dayNum(last)-dayNum(first) : 0;
+  intervals.sort((a,b)=>a.to-b.to);
+  const spanDays = first!==null ? last-first : 0;
   let unit = MEDIA[media].bill;
   if (media==='gas' && meters.some(m=>m.unit==='m3') && !(tariff && tariff.kwh_per_m3)) unit='m³';
   const rateAll = per.reduce((s,p)=>s+p.rateAll,0), rate = per.reduce((s,p)=>s+p.rateRec,0);
   const res = { media, tariff, meters, per, intervals, dayQty, qty, spanDays, rate, rateAll, first, last, unit, hasData: intervals.length>0 };
   if (!res.hasData) return res;
 
-  const tn=dayNum(today());
-  res.sinceLast = Math.max(0, tn-dayNum(last));
+  const tn=nowT();
+  res.sinceLast = Math.max(0, tn-last);
   res.qtyToday = qty + rate*res.sinceLast;
-  res.spanToday = Math.max(1, tn-dayNum(first));
+  res.spanToday = Math.max(0.01, tn-first);
   res.yearQty = rate*365;
   res.co2Year = unit==='kWh' ? res.yearQty*MEDIA[media].co2 : 0;
   res.est = per.map(p=>({ m:p.m, value: p.lastVal + p.rawRec*res.sinceLast }));
-
-  // letzter Zeitraum auffällig?
   if (intervals.length>=3){
     const li=intervals[intervals.length-1];
-    if (rateAll>0 && li.perDay>1.4*rateAll) res.alert = Math.round((li.perDay/rateAll-1)*100);
+    if (rateAll>0 && li.days>=2 && li.perDay>1.4*rateAll) res.alert = Math.round((li.perDay/rateAll-1)*100);
   }
+  const endT=Math.max(tn,last);
+  const months={};
   if (tariff){
     const price=Number(tariff.price_per_unit), base=Number(tariff.base_fee_month), set=Number(tariff.advance_month);
     res.price=price; res.base=base;
-    // Preis je Tag: es gilt der jeweils zu diesem Datum gültige Tarif
     const tl=state.tariffs.filter(t=>t.media_type===media);
     const at=d=>{ const ds=dayStr(d); let t=tl[0]; tl.forEach(x=>{ if(x.valid_from<=ds) t=x; }); return t; };
-    const fd0=dayNum(first), ld0=dayNum(last); let cost=0;
-    for (let d=fd0+1; d<=tn; d++){ const t=at(d); cost += (d<=ld0 ? (dayQty[d]||0) : rate)*Number(t.price_per_unit) + Number(t.base_fee_month)/MONTH; }
+    let cost=0;
+    for (let d=Math.floor(first); d<=Math.floor(endT); d++){
+      const lo=Math.max(first,d), hi=Math.min(endT,d+1), len=hi-lo; if(len<=0) continue;
+      const t=at(d), p=Number(t.price_per_unit), b=Number(t.base_fee_month)/MONTH;
+      const inData=Math.max(0,Math.min(hi,last)-lo), extra=Math.max(0,hi-Math.max(lo,last));
+      cost += ((dayQty[d]||0)+rate*extra)*p + b*len;
+      if (inData>0){ const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0,cost:0}); o.qty+=dayQty[d]||0; o.days+=inData; o.cost+=(dayQty[d]||0)*p+b*inData; }
+    }
     res.costToday = cost;
     res.setAside = set*res.spanToday/MONTH;
     res.gap = res.costToday - res.setAside;
@@ -360,20 +393,13 @@ function analyze(media){
     res.monthCost = res.yearCost/12;
     res.dayCost = rate*price + base/MONTH;
     res.setMonth = set;
-    // Monatsaggregate
-    const months={};
-    const fd=dayNum(first), ld=dayNum(last);
-    for (let d=fd+1; d<=ld; d++){
-      const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0});
-      const t=at(d); o.qty += dayQty[d]||0; o.days++;
-      o.cost = (o.cost||0) + (dayQty[d]||0)*Number(t.price_per_unit) + Number(t.base_fee_month)/MONTH;
-    }
-    res.months=months;
   } else {
-    const months={}; const fd=dayNum(first), ld=dayNum(last);
-    for (let d=fd+1; d<=ld; d++){ const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0}); o.qty+=dayQty[d]||0; o.days++; }
-    res.months=months;
+    for (let d=Math.floor(first); d<=Math.floor(last); d++){
+      const inData=Math.min(last,d+1)-Math.max(first,d); if(inData<=0) continue;
+      const k=dayStr(d).slice(0,7); const o=months[k]||(months[k]={qty:0,days:0}); o.qty+=dayQty[d]||0; o.days+=inData;
+    }
   }
+  res.months=months;
   return res;
 }
 
@@ -439,12 +465,13 @@ function viewMedia(media){
     h+=`<div class="hero"><small>${esc(M.label)}: Ø Verbrauch pro Tag</small><b>${num(a.rate,2)} ${u}</b><div class="meta">Hochrechnung Jahr ${num(a.yearQty,0)} ${u}</div></div>`;
   }
   h+=`<div class="card"><h2>Verbrauch</h2><div class="kpis">
-    ${kpi(num(a.qtyToday,0)+' '+u,'seit '+fdate(a.first)+' (bis heute geschätzt)')}
+    ${kpi(num(a.qtyToday,0)+' '+u,'seit '+fdate(dayStr(Math.floor(a.first)))+' (bis heute geschätzt)')}
     ${kpi(num(a.rate,2)+' '+u,'pro Tag (Trend der letzten ~90 Tage)')}
     ${kpi(num(a.rate*MONTH,0)+' '+u,'pro Monat')}
     ${kpi(num(a.yearQty,0)+' '+u,'Hochrechnung Jahr')}
   </div>`;
   if (a.alert) h+=`<div class="note" style="color:var(--danger)">Auffällig: Der letzte Zeitraum liegt ${a.alert} % über deinem Durchschnitt${media==='wasser'?'. Bitte auf Leckagen achten.':'.'}</div>`;
+  if (media==='gas' && a.spanDays<300) h+=`<div class="note">Gas schwankt stark mit der Jahreszeit. Die Hochrechnung wird nach etwa einem Jahr deutlich genauer. Bis dahin ist sie nur ein Anhaltspunkt.</div>`;
   h+=`</div>`;
   if (a.tariff){
     h+=`<div class="card"><h2>Kosten & Rückstellung</h2><div class="kpis">
@@ -457,9 +484,9 @@ function viewMedia(media){
     h+=`<div class="card empty">Trage unter „Tarife" deinen ${esc(M.label)}-Tarif ein, dann rechne ich Kosten und Rückstellung aus.</div>`;
   }
   // geschätzte Zählerstände
-  if (a.sinceLast>0){
+  if (a.sinceLast>0.02){
     h+=`<div class="card"><h2>Geschätzter Zählerstand heute</h2><ul class="list">`+
-      a.est.map(e=>`<li><div><b>${num(e.value,1)} ${e.m.unit==='m3'?'m³':'kWh'}</b><small>${esc(e.m.meter_number)}${e.m.description?' · '+esc(e.m.description):''} · seit ${a.sinceLast} Tagen nicht abgelesen</small></div></li>`).join('')+`</ul></div>`;
+      a.est.map(e=>`<li><div><b>${num(e.value,1)} ${e.m.unit==='m3'?'m³':'kWh'}</b><small>${esc(e.m.meter_number)}${e.m.description?' · '+esc(e.m.description):''} · seit ${agoText(a.sinceLast)} nicht abgelesen</small></div></li>`).join('')+`</ul></div>`;
   }
   h+=`<div class="card"><h2>Verbrauch pro Monat</h2><div class="chartbox"><canvas id="cBars"></canvas></div></div>`;
   h+=`<div class="card"><h2>Tagesverbrauch je Ablesung</h2><div class="chartbox"><canvas id="cLine"></canvas></div></div>`;
@@ -496,7 +523,7 @@ function drawCharts(){
       if (eb) charts.push(new Chart(eb,{type:'bar',data:{labels:keys.map(monLabel),datasets:[{data:keys.map(k=>+a.months[k].qty.toFixed(1)),backgroundColor:col,borderRadius:8,borderSkipped:false}]},
         options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,1)} ${u}`}}}}}));
       const el=$('cLine');
-      if (el) charts.push(new Chart(el,{type:'line',data:{labels:a.intervals.map(i=>fdate(i.to).slice(0,6)),datasets:[{data:a.intervals.map(i=>+i.perDay.toFixed(3)),borderColor:col,backgroundColor:grad(col),fill:true,tension:.4,pointRadius:3,pointBackgroundColor:col,borderWidth:3}]},
+      if (el) charts.push(new Chart(el,{type:'line',data:{labels:a.intervals.map(i=>i.label),datasets:[{data:a.intervals.map(i=>+i.perDay.toFixed(3)),borderColor:col,backgroundColor:grad(col),fill:true,tension:.4,pointRadius:3,pointBackgroundColor:col,borderWidth:3}]},
         options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${num(c.parsed.y,2)} ${u} pro Tag`}}}}}));
       const ec=$('cCum');
       if (ec && a.tariff){
@@ -524,30 +551,33 @@ function updateHint(){
   const m=state.meters.find(x=>x.id===$('rMeter').value);
   if(!m){ $('rHint').textContent='Lege zuerst einen Zähler an.'; return; }
   const l=lastReading(m.id);
-  $('rHint').textContent = l ? `Letzter Stand: ${num(Number(l.value),3)} ${m.unit==='m3'?'m³':'kWh'} am ${fdate(l.reading_date)}` : 'Das ist die erste Ablesung, sie dient als Startwert. Das Datum kann auch in der Vergangenheit liegen.';
+  $('rHint').textContent = l ? `Letzter Stand: ${num(Number(l.value),3)} ${m.unit==='m3'?'m³':'kWh'} am ${readLabelFull(l)}` : 'Das ist die erste Ablesung, sie dient als Startwert. Das Datum kann auch in der Vergangenheit liegen.';
 }
 $('rMeter').onchange=updateHint;
 function resetReadForm(){
-  state.editReading=null; $('rVal').value=''; $('rNote').value=''; $('rDate').value=today();
+  state.editReading=null; $('rVal').value=''; $('rNote').value=''; $('rEst').checked=false; $('rDate').value=nowLocalInput();
   $('rSubmit').textContent='Speichern'; $('rCancel').classList.add('hidden'); msg('rMsg',''); updateHint();
 }
 function startEditReading(r){
-  state.editReading=r.id; $('rMeter').value=r.meter_id; $('rDate').value=r.reading_date; $('rVal').value=r.value; $('rNote').value=r.notes||'';
+  state.editReading=r.id; $('rMeter').value=r.meter_id; $('rDate').value=r.read_at?toLocalInput(r.read_at):r.reading_date+'T12:00'; $('rVal').value=r.value; $('rNote').value=r.notes||''; $('rEst').checked=!!r.is_estimate;
   $('rSubmit').textContent='Änderung speichern'; $('rCancel').classList.remove('hidden'); updateHint(); window.scrollTo(0,0);
 }
 $('rCancel').onclick=resetReadForm;
 
 $('readForm').onsubmit = async e => {
   e.preventDefault(); msg('rMsg','');
-  const meter_id=$('rMeter').value, reading_date=$('rDate').value, value=parseFloat($('rVal').value);
+  const meter_id=$('rMeter').value, local=$('rDate').value, value=parseFloat($('rVal').value);
   if(!meter_id) return msg('rMsg','Bitte zuerst einen Zähler anlegen.');
-  const rs=state.readings.filter(r=>r.meter_id===meter_id && r.id!==state.editReading);
-  const before=rs.filter(r=>r.reading_date<=reading_date).pop();
-  const after=rs.filter(r=>r.reading_date>reading_date)[0];
-  if ((before && value<Number(before.value)) || (after && value>Number(after.value))){
+  const read_at=new Date(local).toISOString(), reading_date=local.slice(0,10);
+  const is_estimate=$('rEst').checked;
+  const tNew=readT({read_at,reading_date});
+  const rs=state.readings.filter(r=>r.meter_id===meter_id && r.id!==state.editReading && !r.is_estimate);
+  const before=rs.filter(r=>readT(r)<=tNew).pop();
+  const after=rs.filter(r=>readT(r)>tNew)[0];
+  if (!is_estimate && ((before && value<Number(before.value)) || (after && value>Number(after.value)))){
     if(!confirm('Der Stand passt nicht zu den Nachbarwerten (Zähler laufen nur aufwärts). Trotzdem speichern?')) return;
   }
-  const row={meter_id,reading_date,value,notes:$('rNote').value.trim()||null};
+  const row={meter_id,reading_date,read_at,value,is_estimate,notes:$('rNote').value.trim()||null};
   const { error } = state.editReading ? await sb.from('readings').update(row).eq('id',state.editReading) : await sb.from('readings').insert(row);
   if (error) return msg('rMsg',error.message);
   resetReadForm(); await load(); renderAll(); toast('Gespeichert');
@@ -578,7 +608,7 @@ $('bSave').onclick = async () => {
   msg('bMsg','');
   const meter_id=$('bMeter').value; if(!meter_id) return;
   const rows=[...$('bRows').querySelectorAll('input:not(:disabled)')].filter(i=>i.value!=='')
-    .map(i=>({meter_id,reading_date:i.dataset.date,value:parseFloat(i.value)}));
+    .map(i=>({meter_id,reading_date:i.dataset.date,read_at:new Date(i.dataset.date+'T23:59:00').toISOString(),value:parseFloat(i.value)}));
   if(!rows.length) return msg('bMsg','Keine neuen Werte eingetragen.');
   const sorted=[...rows].sort((a,b)=>a.reading_date<b.reading_date?-1:1);
   for (let i=1;i<sorted.length;i++) if (sorted[i].value<sorted[i-1].value) return msg('bMsg','Ein Wert ist kleiner als der Monat davor. Bitte prüfen.');
@@ -589,12 +619,12 @@ $('bSave').onclick = async () => {
 
 function renderReadList(){
   const ul=$('readList'); ul.innerHTML='';
-  const rows=[...state.readings].sort((a,b)=>a.reading_date<b.reading_date?1:-1).slice(0,30);
+  const rows=[...state.readings].sort((a,b)=>readT(b)-readT(a)).slice(0,30);
   if(!rows.length){ ul.innerHTML='<li class="empty" style="display:block;border:0">Noch keine Ablesungen.</li>'; return; }
   rows.forEach(r=>{
     const m=state.meters.find(x=>x.id===r.meter_id); if(!m) return;
     const li=document.createElement('li');
-    li.innerHTML=`<div><span class="dot" style="background:var(${MEDIA[m.media_type].color})"></span><b>${num(Number(r.value),3)} ${m.unit==='m3'?'m³':'kWh'}</b><small>${esc(MEDIA[m.media_type].label)} · ${fdate(r.reading_date)}${r.notes?' · '+esc(r.notes):''}</small></div>`;
+    li.innerHTML=`<div><span class="dot" style="background:var(${MEDIA[m.media_type].color})"></span><b>${r.is_estimate?'≈ ':''}${num(Number(r.value),3)} ${m.unit==='m3'?'m³':'kWh'}</b><small>${esc(MEDIA[m.media_type].label)} · ${readLabelFull(r)}${r.is_estimate?' · Schätzwert':''}${r.notes?' · '+esc(r.notes):''}</small></div>`;
     const eb=document.createElement('button'); eb.className='del'; eb.style.cssText='color:var(--accent);margin-left:auto'; eb.textContent='Ändern'; eb.onclick=()=>startEditReading(r);
     li.appendChild(eb);
     const b=document.createElement('button'); b.className='del'; b.textContent='Löschen';
@@ -649,9 +679,14 @@ function renderTariffs(){
 $('meterForm').onsubmit = async e => {
   e.preventDefault(); msg('mMsg','');
   const t=$('mType').value;
-  const { error } = await sb.from('meters').insert({ media_type:t, meter_number:$('mNr').value.trim(), unit:t==='strom'?'kWh':'m3', description:$('mDesc').value.trim()||null });
+  const { data:newM, error } = await sb.from('meters').insert({ media_type:t, meter_number:$('mNr').value.trim(), unit:t==='strom'?'kWh':'m3', description:$('mDesc').value.trim()||null }).select().single();
   if (error) return msg('mMsg',error.message);
-  $('mNr').value=''; $('mDesc').value=''; await load(); renderAll(); toast('Zähler angelegt');
+  const id=$('mInstDate').value, iv=$('mInstVal').value;
+  if (id && iv!==''){
+    const r=await sb.from('readings').insert({ meter_id:newM.id, reading_date:id, read_at:new Date(id+'T00:00:00').toISOString(), value:parseFloat(iv), notes:'Einbau' });
+    if (r.error) msg('mMsg','Zähler angelegt, Startstand fehlgeschlagen: '+r.error.message);
+  }
+  $('mNr').value=''; $('mDesc').value=''; $('mInstDate').value=''; $('mInstVal').value=''; await load(); renderAll(); toast('Zähler angelegt');
 };
 function renderMeters(){
   const ul=$('meterList'); ul.innerHTML='';
